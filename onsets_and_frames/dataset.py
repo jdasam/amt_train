@@ -39,7 +39,7 @@ class PianoRollAudioDataset(Dataset):
         result = dict(path=data['path'])
 
         if self.sequence_length is not None:
-            audio_length = len(data['audio'])  # 541741
+            audio_length = len(data['audio']) 
 
             # audio_length v.s. sequence_length protection code (19/09/12 by KCH)
             if (audio_length - self.sequence_length) <= 0:
@@ -132,26 +132,6 @@ class PianoRollAudioDataset(Dataset):
         tsv_path = tsv_path
         midi = np.loadtxt(tsv_path, delimiter='\t', skiprows=1)
 
-        # # 비교용 원래 reonset (4) 이 없을 때
-        orig_label = torch.zeros(n_steps, n_keys, dtype=torch.uint8)
-        orig_velocity = torch.zeros(n_steps, n_keys, dtype=torch.uint8)
-        
-        for onset, offset, note, vel in midi:
-            left = int(round(onset * SAMPLE_RATE / HOP_LENGTH))
-            onset_right = min(n_steps, left + HOPS_IN_ONSET)
-            frame_right = int(round(offset * SAMPLE_RATE / HOP_LENGTH))
-            frame_right = min(n_steps, frame_right)
-            offset_right = min(n_steps, frame_right + HOPS_IN_OFFSET)
-            
-            f = int(note) - MIN_MIDI            
-            
-            orig_label[left:onset_right, f] = 3
-            orig_label[onset_right:frame_right, f] = 2
-            orig_label[frame_right:offset_right, f] = 1
-            orig_velocity[left:frame_right, f] = vel            
-
-        note_idx = 0
-        
         for onset, offset, note, vel in midi:
             left = int(round(onset * SAMPLE_RATE / HOP_LENGTH))
             onset_right = min(n_steps, left + HOPS_IN_ONSET)
@@ -161,73 +141,13 @@ class PianoRollAudioDataset(Dataset):
             
             f = int(note) - MIN_MIDI
             
-            note_idx = note_idx + 1            
-            if label[left:onset_right, f] == 4: # 이미 reonset (4) 으로 check 되어 있으면 다음 note로 continue
-                continue
-
-            label[left:onset_right, f] = 3
+            if label[left:onset_right, f] == 2:
+                label[left:onset_right, f] = 4
+            else:
+                label[left:onset_right, f] = 3
             label[onset_right:frame_right, f] = 2
             label[frame_right:offset_right, f] = 1
             velocity[left:frame_right, f] = vel
-            
-            # midi.shape = events x 4 (onset, offset, note, vel) 이고 비교 노트는 본 노트 다음 부터 고려 하여
-            # 만약 동일 pitch의 비교 노트 onset (==left)이 본 노트의 onset (==left)와 offset (==offset_right) 사이에 있으면 reonset (4)으로 설정            
-            for cmp_onset, cmp_offset, cmp_note, cmp_vel in midi[note_idx:,:]:
-                cmp_left = int(round(cmp_onset * SAMPLE_RATE / HOP_LENGTH))
-                cmp_onset_right = min(n_steps, cmp_left + HOPS_IN_ONSET)
-                cmp_frame_right = int(round(cmp_offset * SAMPLE_RATE / HOP_LENGTH))
-                cmp_frame_right = min(n_steps, cmp_frame_right)
-                cmp_offset_right = min(n_steps, cmp_frame_right + HOPS_IN_OFFSET)
-            
-                cmp_f = int(cmp_note) - MIN_MIDI               
-
-                if (cmp_f == f) and (cmp_left > left) and (cmp_left < offset_right):
-                    label[cmp_left:cmp_onset_right, f] = 4                    
-                    label[cmp_onset_right:cmp_frame_right, f] = 2
-                    label[cmp_frame_right:cmp_offset_right, f] = 1
-                    velocity[cmp_left:cmp_frame_right, f] = cmp_vel
-                    # repeat note vel이 본노트 vel 보다 크고 본노트와 repeat note의 간격이 96msec (=3frames 이상인경우) 추가적으로 reonset 앞에 offset을 주어 끊고 가기  
-                    if (velocity[cmp_left, f] > velocity[left, f]) and (cmp_left - left >= 3):                        
-                        label[cmp_left-1:cmp_left, f] = 1
-                    
-        # fig = plt.figure()
-        # ax1 = fig.add_subplot(2,1,1)
-        # tmp_orig_label = orig_label.transpose(1,0)
-        # im1 = ax1.imshow( tmp_orig_label[41:51,:300], cmap='hot', origin='lower', aspect='auto')
-        # fig.colorbar(im1, ax=ax1)
-        
-        # ax2 = fig.add_subplot(2,1,2)
-        # tmp_label = label.transpose(1,0)
-        # im2 = ax2.imshow( tmp_label[41:51,:300], cmap='hot', origin='lower', aspect='auto')        
-        # fig.colorbar(im2, ax=ax2)
-
-        # fig.savefig('re_cmp_figure.png')
-
-        # fig = plt.figure()
-        # ax1 = fig.add_subplot(2,1,1)
-        # tmp_orig_label = orig_label.transpose(1,0)
-        # im1 = ax1.imshow( tmp_orig_label[41:51,1300:1600], cmap='hot', origin='lower', aspect='auto')
-        # fig.colorbar(im1, ax=ax1)       
-        
-        # ax2 = fig.add_subplot(2,1,2)
-        # tmp_label = label.transpose(1,0)
-        # im2 = ax2.imshow( tmp_label[41:51,1300:1600], cmap='hot', origin='lower', aspect='auto')        
-        # fig.colorbar(im2, ax=ax2)
-
-        # fig.savefig('re_cmp_figure2.png')
-
-        # fig = plt.figure()
-        # ax1 = fig.add_subplot(2,1,1)
-        # tmp_orig_label = orig_label.transpose(1,0)
-        # im1 = ax1.imshow( tmp_orig_label[41:51,3300:3600], cmap='hot', origin='lower', aspect='auto')
-        # fig.colorbar(im1, ax=ax1)
-        
-        # ax2 = fig.add_subplot(2,1,2)
-        # tmp_label = label.transpose(1,0)
-        # im2 = ax2.imshow( tmp_label[41:51,3300:3600], cmap='hot', origin='lower', aspect='auto')        
-        # fig.colorbar(im2, ax=ax2)
-
-        # fig.savefig('re_cmp_figure3.png')
 
         data = dict(path=audio_path, audio=audio,
                     label=label, velocity=velocity)
