@@ -257,7 +257,7 @@ def evaluate(model, data, dataset_name=None, onset_threshold=0.5,
         i = i + 1
         audio_len = len(label['audio'])
         file_name = label['path']
-        print('{} {} - {}'.format(i, audio_len, file_name))
+        # print('{} {} - {}'.format(i, audio_len, file_name))
         pred = _predict_each_label(label, model)
         
         # pred = pred.cpu().numpy()

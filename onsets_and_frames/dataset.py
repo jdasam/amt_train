@@ -40,14 +40,8 @@ class PianoRollAudioDataset(Dataset):
 
         if self.sequence_length is not None:
             audio_length = len(data['audio']) 
-
-            # audio_length v.s. sequence_length protection code (19/09/12 by KCH)
-            if (audio_length - self.sequence_length) <= 0:
-                step_begin = 0
-            else:
-                step_begin = (self.random.randint(audio_length -
-                                                  self.sequence_length) //
-                              HOP_LENGTH)
+            step_begin = (self.random.randint(max(0 , audio_length - self.sequence_length)) //
+                            HOP_LENGTH)
             n_steps = self.sequence_length // HOP_LENGTH
             step_end = step_begin + n_steps
 
@@ -56,21 +50,11 @@ class PianoRollAudioDataset(Dataset):
             result['audio'] = data['audio'][begin:end].to(self.device)
             result['label'] = (data['label'][step_begin:step_end, :]
                                .to(self.device))
-            # result['velocity'] = (data['velocity'][step_begin:step_end, :]
-            #                       .to(self.device))
         else:
             result['audio'] = data['audio'].to(self.device)
             result['label'] = data['label'].to(self.device)
-            # result['velocity'] = data['velocity'].to(self.device).float()
 
         result['audio']  = result['audio'].float().div_(32768.0)
-        # result['onset']  = (result['label'] == 3).float()
-        # result['offset'] = (result['label'] == 1).float()
-        # result['sustain'] = (result['label'] == 2).float()
-        # result['reonset'] = (result['label'] == 4).float()                
-        # result['off']     = (result['label'] == 0).float()
-        # result['frame']    = (result['label'] > 1).float()
-        # result['velocity'] = result['velocity'].float().div_(128.0)
 
         return result
 
@@ -108,8 +92,8 @@ class PianoRollAudioDataset(Dataset):
                 a matrix that contains MIDI velocity values
                 at the frame locations
         """
-        saved_data_path = (audio_path.replace('.flac', '.pt2')
-                                     .replace('.wav', '.pt2'))
+        saved_data_path = (audio_path.replace('.flac', '.pt')
+                                     .replace('.wav', '.pt'))
         if os.path.exists(saved_data_path):
             return torch.load(saved_data_path)
 
@@ -151,8 +135,6 @@ class PianoRollAudioDataset(Dataset):
 
         data = dict(path=audio_path, audio=audio,
                     label=label, velocity=velocity)
-
-        saved_data_path = (audio_path.replace('.flac', '.pt2'))
         
         print('firstly save file@{}'.format(saved_data_path))
         torch.save(data, saved_data_path)
@@ -184,7 +166,7 @@ class MAESTRO(PianoRollAudioDataset):
                 raise RuntimeError('Group ' + group + ' is empty')
         else:
             metadata = json.load(open(os.path.join(self.path,
-                                                   'maestro-v1.0.0.json')))
+                                                   'maestro-v2.0.0.json')))
             files = sorted([(os.path.join(self.path,
                                           (row['audio_filename']
                                            .replace('.wav', '.flac'))),
