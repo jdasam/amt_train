@@ -78,7 +78,8 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
     # maps_valid_dataset = MAPS(groups=test_groups, sequence_length=sequence_length)
     #maps_maestro_valid_dataset = ConcatDataset((maestro_valid_dataset,
     #                                            maps_valid_dataset))
-    # Build batch for loader  
+    # Build batch for loader
+    print('The Dataset size is train: {}, valid: {}'.format(len(dataset), len(maestro_valid_dataset)))
     loader = DataLoader(dataset, batch_size, shuffle=True)
 
     if resume_iteration is None:
@@ -92,8 +93,10 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
         
     else:
         model_path = os.path.join(logdir,
-                                  'model-{}.trm'.format(resume_iteration))
+                                  'model-{}.pt'.format(resume_iteration))
         model = load_transcriber(model_path, use_dp).to(device)
+        if use_dp:
+            model = DataParallel(model, use_gpu)
         optimizer = torch.optim.Adam(model.parameters(), learning_rate)
         optimizer.load_state_dict(torch.load(os.path .join(logdir,'last-optimizer-state.pt')))
 
@@ -192,7 +195,6 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
 
         if i % checkpoint_interval == 0:
             print('logdir={}'.format(logdir))
-            #model.save(os.path.join(logdir, 'model-{}.trm'.format(i)))
             if use_dp:
                 state_dict = model.module.state_dict()
             else:
@@ -204,8 +206,8 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
                 'model_complexity_lstm': model_complexity_lstm,
             }
             , os.path.join(logdir, 'model-{}.pt'.format(i)))
-            # torch.save(optimizer.state_dict(),
-            #            os.path.join(logdir, 'last-optimizer-state.pt'))
+            torch.save(optimizer.state_dict(),
+                       os.path.join(logdir, 'last-optimizer-state.pt'))
         # For MetaReport, send the evaluation metric values once at the end of training.
         if i == iterations:
             MetaReporter().send_iteration(i, g_max_note_f1_maps,
