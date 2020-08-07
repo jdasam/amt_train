@@ -194,7 +194,6 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
             model.train()
 
         if i % checkpoint_interval == 0:
-            print('logdir={}'.format(logdir))
             if use_dp:
                 state_dict = model.module.state_dict()
             else:

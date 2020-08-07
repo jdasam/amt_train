@@ -23,6 +23,7 @@ def _gpu_total_memory(use_gpu):
 @ex.config
 def config():
     logdir = LOG_DIR_PRE + datetime.now().strftime('%y%m%d-%H%M%S')
+    # logdir = '/home/svcapp/userdata/amt_model/200804-172517'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     iterations = 500000
     resume_iteration = None
@@ -34,7 +35,7 @@ def config():
     model_complexity_lstm = 48
     use_gpu = [0,1,2]  # GPU Num in list
 
-    dataset_list = ['MAESTRO', 'MAPS']
+    dataset_list = ['MAESTRO']
     # dataset_list = ['MAPS']
     valid_dataset_list = ['MAESTRO']
 
@@ -47,8 +48,8 @@ def config():
                    '{} to save memory').format(batch_size, sequence_length))
 
     learning_rate = 0.0006
-    learning_rate_decay_steps = 10000
-    learning_rate_decay_rate = 0.98  # 0.97 --> 0.98 (default)
+    learning_rate_decay_steps = 5000
+    learning_rate_decay_rate = 0.95
 
     leave_one_out = None
 
