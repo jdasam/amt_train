@@ -49,8 +49,7 @@ class MetaReporter(object, metaclass=Singleton):
                 self.has_error = True
 
     def send_iteration(self, iteration, note_f1, note_overlap,
-                       note_onset_offset_f1, note_f1_dataset2,
-                       note_overlap_dataset2, note_onset_offset_f1_dataset2):
+                       note_onset_offset_f1):
         def _make_dict(name, value, vtype='float'):
             return {
                        "iteration": iteration,
@@ -65,10 +64,6 @@ class MetaReporter(object, metaclass=Singleton):
         body.append(_make_dict('note_f1', note_f1))
         body.append(_make_dict('note_overlap', note_overlap))
         body.append(_make_dict('note_onset_offset_f1', note_onset_offset_f1))
-        body.append(_make_dict('note_f1_dataset2', note_f1_dataset2))
-        body.append(_make_dict('note_overlap_dataset2', note_overlap_dataset2))
-        body.append(_make_dict('note_onset_offset_f1_dataset2',
-                    note_onset_offset_f1_dataset2))
 
         self._send(self.url, self.header, body)
 

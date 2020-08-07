@@ -150,10 +150,6 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
         if i % validation_interval == 0:
             model.eval()
             with torch.no_grad():
-                # For MetaReport, initialize the evaluation metric values on every validation_intervals.
-                note_f1_maps = 0
-                note_overlap_maps = 0
-                note_onset_offset_f1_maps = 0
                 note_f1_maestro = 0
                 note_overlap_maestro = 0
                 note_onset_offset_f1_maestro = 0
@@ -178,20 +174,21 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
                     # if (key == 'metric/note-with-offsets/f1'):
                     #     note_onset_offset_f1_mapsmaestro = np.mean(value)
 
-                # For MetaReport, select the max metrics values.
-                if note_f1_maps > g_max_note_f1_maps:
-                    g_max_note_f1_maps = note_f1_maps
-                    g_max_note_overlap_maps = note_overlap_maps
-                    g_max_note_onset_offset_f1_maps = note_onset_offset_f1_maps
-                    # these sample_xxx arrays are for fixed f1 value test.
-                    # g_max_note_f1              = sample_note_f1[inside_idx]
-                    # g_max_note_overlap         = sample_note_overlap[inside_idx]
-                    # g_max_note_onset_offset_f1 = sample_note_onoffset_f1[inside_idx]
-                if note_f1_maestro > g_max_note_f1_maestro:
-                    g_max_note_f1_maestro = note_f1_maestro
-                    g_max_note_overlap_maestro = note_overlap_maestro
-                    g_max_note_onset_offset_f1_maestro = note_onset_offset_f1_maestro
+            # For MetaReport, select the max metrics values.
+                # these sample_xxx arrays are for fixed f1 value test.
+                # g_max_note_f1              = sample_note_f1[inside_idx]
+                # g_max_note_overlap         = sample_note_overlap[inside_idx]
+                # g_max_note_onset_offset_f1 = sample_note_onoffset_f1[inside_idx]
+            g_max_note_f1_maestro = max(note_f1_maestro, g_max_note_f1_maestro)
+            g_max_note_overlap_maestro = max(note_overlap_maestro, g_max_note_overlap_maestro)
+            g_max_note_onset_offset_f1_maestro = max(note_onset_offset_f1_maestro, g_max_note_onset_offset_f1_maestro)
+
+            MetaReporter().send_iteration(i,
+                                          g_max_note_f1_maestro,
+                                          g_max_note_overlap_maestro,
+                                          g_max_note_onset_offset_f1_maestro)
             model.train()
+            
 
         if i % checkpoint_interval == 0:
             if use_dp:
@@ -208,17 +205,17 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
             torch.save(optimizer.state_dict(),
                        os.path.join(logdir, 'last-optimizer-state.pt'))
         # For MetaReport, send the evaluation metric values once at the end of training.
-        if i == iterations:
-            MetaReporter().send_iteration(i, g_max_note_f1_maps,
-                                          g_max_note_overlap_maps,
-                                          g_max_note_onset_offset_f1_maps,
-                                          g_max_note_f1_maestro,
-                                          g_max_note_overlap_maestro,
-                                          g_max_note_onset_offset_f1_maestro)
-            print(
-                'kch debug max_iter:{}, g_max_note_f1_maps:{}, g_max_note_overlap_maps:{}, g_max_note_onset_offset_f1_maps:{}'.format(
-                    iterations, g_max_note_f1_maps, g_max_note_overlap_maps, g_max_note_onset_offset_f1_maps))
-            print(
-                'kch debug max_iter:{}, g_max_note_f1_maestro:{}, g_max_note_overlap_maestro:{}, g_max_note_onset_offset_f1_maestro:{}'.format(
-                    iterations, g_max_note_f1_maestro, g_max_note_overlap_maestro,
-                    g_max_note_onset_offset_f1_maestro))
+        # if i == iterations:
+        #     MetaReporter().send_iteration(i, g_max_note_f1_maps,
+        #                                   g_max_note_overlap_maps,
+        #                                   g_max_note_onset_offset_f1_maps,
+        #                                   g_max_note_f1_maestro,
+        #                                   g_max_note_overlap_maestro,
+        #                                   g_max_note_onset_offset_f1_maestro)
+        #     print(
+        #         'kch debug max_iter:{}, g_max_note_f1_maps:{}, g_max_note_overlap_maps:{}, g_max_note_onset_offset_f1_maps:{}'.format(
+        #             iterations, g_max_note_f1_maps, g_max_note_overlap_maps, g_max_note_onset_offset_f1_maps))
+        #     print(
+        #         'kch debug max_iter:{}, g_max_note_f1_maestro:{}, g_max_note_overlap_maestro:{}, g_max_note_onset_offset_f1_maestro:{}'.format(
+        #             iterations, g_max_note_f1_maestro, g_max_note_overlap_maestro,
+        #             g_max_note_onset_offset_f1_maestro))

@@ -33,7 +33,7 @@ def config():
     sequence_length = 327680
     model_complexity_conv = 48
     model_complexity_lstm = 48
-    use_gpu = [0,1,2]  # GPU Num in list
+    use_gpu = [0]  # GPU Num in list
 
     dataset_list = ['MAESTRO']
     # dataset_list = ['MAPS']
