@@ -10,7 +10,9 @@ from torch.utils.data import DataLoader, ConcatDataset
 from tqdm import tqdm
 
 from evaluate import evaluate
-from meta_reporter import MetaReporter
+from metalearner.common.config import experiment, worker
+from metalearner.api import scalars
+# from meta_reporter import MetaReporter
 from config import ex
 from sacred.commands import print_config
 
@@ -50,7 +52,7 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
     train_groups, validation_groups = ['train'], ['validation']
     test_groups = ['test']
 
-    MetaReporter().initialize(worker_id)
+    # MetaReporter().initialize(worker_id)
 
     if leave_one_out is not None:
         all_years = {'2004', '2006', '2008', '2009', '2011',
@@ -150,43 +152,27 @@ def train(logdir, device, iterations, resume_iteration, checkpoint_interval,
         if i % validation_interval == 0:
             model.eval()
             with torch.no_grad():
-                note_f1_maestro = 0
-                note_overlap_maestro = 0
-                note_onset_offset_f1_maestro = 0
+                note_f1 = 0
+                note_recall = 0
+                note_onset_offset_f1 = 0
+                note_precision = 0
                 for key, value in evaluate(model, maestro_valid_dataset).items():
                 # for key, value in evaluate(model, maps_valid_dataset).items():
                     writer.add_scalar('maestro_test/' + key.replace(' ', '_'),
                                        np.mean(value), global_step=i)
                     if (key == 'metric/note/f1'):
-                        note_f1_maestro = np.mean(value)
-                    if (key == 'metric/note-with-offsets/overlap'):
-                        note_overlap_maestro = np.mean(value)
+                        note_f1 = np.mean(value)
+                    if (key == 'metric/note/recall'):
+                        note_recall = np.mean(value)
+                    if (key == 'metric/note/precision'):
+                        note_precision = np.mean(value)
                     if (key == 'metric/note-with-offsets/f1'):
-                        note_onset_offset_f1_maestro = np.mean(value)
-                # for key, value in evaluate(model, maps_validp.mean(value):
-                # for key, value in evaluate(model, maps_maestro_valid_dataset).items():
-                    # writer.add_scalar('maps_maestro_test/' + key.replace(' ', '_'),
-                    #                   np.mean(value), global_step=i)
-                    # if (key == 'metric/note/f1'):
-                    #     note_f1_maps_maestro = np.mean(value)
-                    # if (key == 'metric/note-with-offsets/overlap'):
-                    #     note_overlap_maps_maestro = np.mean(value)
-                    # if (key == 'metric/note-with-offsets/f1'):
-                    #     note_onset_offset_f1_mapsmaestro = np.mean(value)
-
-            # For MetaReport, select the max metrics values.
-                # these sample_xxx arrays are for fixed f1 value test.
-                # g_max_note_f1              = sample_note_f1[inside_idx]
-                # g_max_note_overlap         = sample_note_overlap[inside_idx]
-                # g_max_note_onset_offset_f1 = sample_note_onoffset_f1[inside_idx]
-            g_max_note_f1_maestro = max(note_f1_maestro, g_max_note_f1_maestro)
-            g_max_note_overlap_maestro = max(note_overlap_maestro, g_max_note_overlap_maestro)
-            g_max_note_onset_offset_f1_maestro = max(note_onset_offset_f1_maestro, g_max_note_onset_offset_f1_maestro)
-
-            MetaReporter().send_iteration(i,
-                                          g_max_note_f1_maestro,
-                                          g_max_note_overlap_maestro,
-                                          g_max_note_onset_offset_f1_maestro)
+                        note_onset_offset_f1 = np.mean(value)
+                results = {'note_f1': note_f1, 
+                           'note-with-offsets': note_onset_offset_f1, 
+                           'note_recall': note_recall,
+                           'note_precision': note_precision}
+                response = scalars.send_valid_result(worker.id, i//len(dataset), i, results)
             model.train()
             
 
